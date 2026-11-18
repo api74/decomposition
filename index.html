@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Декомпозиция продаж: воронка AI-агента</title>
+<style>
+  :root{
+    --bg:#f4f6fb; --card:#fff; --ink:#111a33; --muted:#6b7694; --line:#dfe4f0;
+    --blue:#3b63e0; --navy:#22308f; --soft:#eef2ff; --ok:#1f9d63; --warn:#d9822b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.4}
+  .wrap{max-width:1120px;margin:0 auto;padding:28px 18px 60px}
+  h1{font-size:26px;margin:0 0 4px}
+  .sub{color:var(--muted);margin:0 0 22px;font-size:15px}
+  .grid{display:grid;grid-template-columns:1fr 1.15fr;gap:20px;align-items:start}
+  @media(max-width:860px){.grid{grid-template-columns:1fr}}
+  .card{background:var(--card);border-radius:16px;padding:22px;box-shadow:0 1px 3px rgba(20,30,70,.06)}
+  .card h2{font-size:17px;margin:0 0 14px}
+  .group{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px}
+  .group:first-of-type{margin-top:0}
+  label{display:block;font-size:13px;color:#39435f;margin:12px 0 5px}
+  .inp{width:100%;font-size:16px;padding:11px 13px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink)}
+  .inp:focus{outline:2px solid var(--blue);border-color:var(--blue)}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .check{display:flex;gap:8px;align-items:center;font-size:14px;margin:14px 0 0;color:var(--ink)}
+  .check input{width:18px;height:18px}
+  .plan{background:var(--soft);}
+  .plan h2{color:var(--navy)}
+  .line{display:flex;justify-content:space-between;gap:12px;background:rgba(255,255,255,.75);border-radius:10px;padding:11px 14px;margin-bottom:8px;font-size:15px}
+  .line b{color:var(--navy);white-space:nowrap}
+  .hero{background:linear-gradient(135deg,#4a72e8,#2a3a9c);color:#fff;border-radius:14px;padding:18px;text-align:center;font-weight:600;font-size:17px;margin-top:14px}
+  .hero small{display:block;font-weight:400;opacity:.85;margin-top:6px;font-size:13px}
+  .bars{margin:4px 0 6px}
+  .bar{display:flex;align-items:center;gap:10px;margin-bottom:7px;font-size:13px}
+  .bar .n{width:130px;color:#39435f;flex:none}
+  .bar .t{flex:1;background:#dfe6fb;border-radius:8px;height:26px;position:relative;overflow:hidden}
+  .bar .f{height:100%;background:var(--blue);border-radius:8px;min-width:2px}
+  .bar .v{position:absolute;left:10px;top:0;line-height:26px;color:#fff;font-weight:600;mix-blend-mode:normal;text-shadow:0 0 3px rgba(0,0,0,.35)}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th{font-weight:500;color:var(--muted);text-align:left;padding:6px 6px;font-size:12px;border-bottom:1px solid var(--line)}
+  td{padding:7px 6px;border-bottom:1px solid #eef0f6;vertical-align:middle}
+  td.num,th.num{text-align:right}
+  td input{width:90px;padding:7px 9px;font-size:14px;border:1px solid var(--line);border-radius:9px;text-align:right}
+  .pct.ok{color:var(--ok);font-weight:600}.pct.warn{color:var(--warn);font-weight:600}
+  .hint{font-size:12px;color:var(--muted);margin-top:10px}
+  .full{margin-top:20px}
+  .btn{margin-top:10px;background:var(--soft);color:var(--navy);border:0;border-radius:10px;padding:9px 14px;font-size:13px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Декомпозиция продаж</h1>
+  <p class="sub">От цели по выручке до числа касаний AI-агента. Меняйте цифры слева, план пересчитывается сразу.</p>
+
+  <div class="grid">
+    <div class="card">
+      <h2>Исходные данные</h2>
+
+      <div class="group">Цель</div>
+      <label>Цель по выручке, ₽</label>
+      <input class="inp" id="goal" type="number" min="0" value="300000">
+      <label>Средний чек, ₽</label>
+      <input class="inp" id="check" type="number" min="1" value="30000">
+
+      <div class="group">Конверсии воронки</div>
+      <label>Касание → ответил, вступил в диалог, %</label>
+      <input class="inp" id="cr1" type="number" min="0" max="100" step="0.1" value="10">
+      <label>Диалог → заявка, %</label>
+      <input class="inp" id="cr2" type="number" min="0" max="100" step="0.1" value="20">
+      <label class="check"><input type="checkbox" id="hasCall" checked> Между заявкой и продажей есть созвон или встреча</label>
+      <div id="callBox">
+        <label>Заявка → созвон состоялся, %</label>
+        <input class="inp" id="cr3" type="number" min="0" max="100" step="0.1" value="60">
+      </div>
+      <label id="cr4label">Созвон → продажа, %</label>
+      <input class="inp" id="cr4" type="number" min="0" max="100" step="0.1" value="30">
+
+      <div class="group">Затраты и сроки</div>
+      <div class="row2">
+        <div><label>Стоимость одного касания, ₽</label>
+        <input class="inp" id="cpt" type="number" min="0" step="0.1" value="20"></div>
+        <div><label>Постоянные расходы, ₽</label>
+        <input class="inp" id="fixed" type="number" min="0" value="0"></div>
+      </div>
+      <div class="row2">
+        <div><label>Срок кампании, дней</label>
+        <input class="inp" id="days" type="number" min="1" value="14"></div>
+        <div><label>Касаний в день с 1 аккаунта</label>
+        <input class="inp" id="perAcc" type="number" min="1" value="30"></div>
+      </div>
+      <div class="hint">Стартовые цифры примерные. Подставьте свои реальные конверсии из таблицы заявок.</div>
+    </div>
+
+    <div>
+      <div class="card plan">
+        <h2>План действий</h2>
+        <div id="lines"></div>
+        <div class="hero" id="hero"></div>
+      </div>
+      <div class="card full">
+        <h2>Воронка</h2>
+        <div class="bars" id="bars"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const fmt = n => isFinite(n) ? Math.round(n).toLocaleString('ru-RU') : '0';
+const fmt1 = n => isFinite(n) ? (Math.round(n*10)/10).toLocaleString('ru-RU') : '0';
+const num = id => Math.max(0, parseFloat($(id).value) || 0);
+const ids = ['goal','check','cr1','cr2','cr3','cr4','cpt','fixed','days','perAcc'];
+const stages = [
+  {k:'touch', name:'Касаний AI-агента'},
+  {k:'reply', name:'Ответили, диалог'},
+  {k:'lead',  name:'Заявок'},
+  {k:'call',  name:'Созвонов'},
+  {k:'sale',  name:'Продаж'}
+];
+let fact = {};
+
+try{
+  const s = JSON.parse(localStorage.getItem('decomp-v1')||'{}');
+  ids.forEach(i=>{ if(s[i]!==undefined) $(i).value = s[i]; });
+  if(s.hasCall!==undefined) $('hasCall').checked = s.hasCall;
+  fact = s.fact || {};
+}catch(e){}
+
+function save(){
+  try{
+    const s = {fact, hasCall:$('hasCall').checked};
+    ids.forEach(i=>s[i]=$(i).value);
+    localStorage.setItem('decomp-v1', JSON.stringify(s));
+  }catch(e){}
+}
+
+function calc(){
+  const hasCall = $('hasCall').checked;
+  $('callBox').style.display = hasCall ? '' : 'none';
+  $('cr4label').textContent = hasCall ? 'Созвон → продажа, %' : 'Заявка → продажа, %';
+
+  const goal=num('goal'), check=Math.max(1,num('check'));
+  const c1=num('cr1')/100, c2=num('cr2')/100, c3=hasCall?num('cr3')/100:1, c4=num('cr4')/100;
+  const cpt=num('cpt'), fixed=num('fixed'), days=Math.max(1,num('days')), perAcc=Math.max(1,num('perAcc'));
+
+  const sale = Math.ceil(goal/check);
+  const call = c4>0 ? Math.ceil(sale/c4) : 0;
+  const lead = hasCall ? (c3>0 ? Math.ceil(call/c3) : 0) : call;
+  const reply = c2>0 ? Math.ceil(lead/c2) : 0;
+  const touch = c1>0 ? Math.ceil(reply/c1) : 0;
+
+  const vals = {touch,reply,lead,call,sale};
+  const active = stages.filter(s => hasCall || s.k!=='call');
+  const budget = touch*cpt + fixed;
+  const perDay = Math.ceil(touch/days);
+  const accs = Math.ceil(perDay/perAcc);
+  const realRev = sale*check;
+
+  // plan lines
+  const L = [];
+  L.push(['Нужно продаж', sale+' шт.']);
+  if(hasCall) L.push(['Нужно провести созвонов', call+' шт.']);
+  L.push(['Нужно получить заявок', lead+' шт.']);
+  L.push(['Нужно диалогов с ответившими', reply+' чел.']);
+  L.push(['Нужно касаний AI-агента', fmt(touch)+' шт.']);
+  L.push(['Касаний в день', fmt(perDay)+' шт.']);
+  L.push(['Аккаунтов в работе', accs+' шт.']);
+  L.push(['Бюджет кампании', fmt(budget)+' ₽']);
+  $('lines').innerHTML = L.map(r=>`<div class="line"><span>${r[0]}</span><b>${r[1]}</b></div>`).join('');
+  const bad = (c1<=0||c2<=0||c4<=0||(hasCall&&c3<=0));
+  $('hero').innerHTML = bad
+    ? 'Укажите конверсии больше нуля'
+    : `Нужно вложить ${fmt(budget)} ₽, чтобы заработать ${fmt(goal)} ₽<small>За ${days} дн., ${fmt(touch)} касаний, расчёт округлён вверх до целых сделок</small>`;
+
+  // bars (log-ish: relative to touches, min width)
+  const max = Math.max(touch,1);
+  $('bars').innerHTML = active.map(s=>{
+    const v = vals[s.k]; const w = Math.max(2, v/max*100);
+    return `<div class="bar"><div class="n">${s.name}</div><div class="t"><div class="f" style="width:${w}%"></div><span class="v">${fmt(v)}</span></div></div>`;
+  }).join('');
+
+}
+
+ids.concat(['hasCall']).forEach(i=>$(i).addEventListener('input',()=>{save();calc();}));
+$('hasCall').addEventListener('change',()=>{save();calc();});
+calc();
+</script>
+</body>
+</html>
