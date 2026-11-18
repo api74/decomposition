@@ -46,6 +46,9 @@
   .pct.ok{color:var(--ok);font-weight:600}.pct.warn{color:var(--warn);font-weight:600}
   .hint{font-size:12px;color:var(--muted);margin-top:10px}
   .full{margin-top:20px}
+  .seg{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .seg button{padding:10px 6px;border:1px solid var(--line);background:#fff;border-radius:10px;font-size:14px;cursor:pointer;color:var(--ink)}
+  .seg button.on{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:600}
   .btn{margin-top:10px;background:var(--soft);color:var(--navy);border:0;border-radius:10px;padding:9px 14px;font-size:13px;cursor:pointer}
 </style>
 </head>
@@ -81,10 +84,16 @@
       <label>Стоимость одного аккаунта, ₽</label>
       <input class="inp" id="acc" type="number" min="0" value="500">
       <div class="row2">
-        <div><label>Срок кампании, дней</label>
-        <input class="inp" id="days" type="number" min="1" value="14"></div>
+        <div><label>Срок кампании</label>
+        <input type="hidden" id="days" value="30">
+        <div class="seg" id="seg">
+          <button type="button" data-d="30">30 дней</button>
+          <button type="button" data-d="90">3 мес.</button>
+          <button type="button" data-d="180">6 мес.</button>
+          <button type="button" data-d="365">12 мес.</button>
+        </div></div>
         <div><label>Касаний в день с 1 аккаунта</label>
-        <input class="inp" id="perAcc" type="number" min="1" value="30"></div>
+        <input class="inp" id="perAcc" type="number" min="1" value="8"></div>
       </div>
       <div class="hint">Стартовые цифры примерные. Подставьте свои реальные конверсии из таблицы заявок. Расход считается только на аккаунты.</div>
     </div>
@@ -118,6 +127,7 @@ const stages = [
   {k:'sale',  name:'Продаж'}
 ];
 let fact = {};
+const DAYS = {30:'30 дн.',90:'3 мес.',180:'6 мес.',365:'12 мес.'};
 
 try{
   const s = JSON.parse(localStorage.getItem('decomp-v1')||'{}');
@@ -166,10 +176,11 @@ function calc(){
   L.push(['Аккаунтов в работе', accs+' шт.']);
   L.push(['Бюджет на аккаунты', fmt(budget)+' ₽']);
   $('lines').innerHTML = L.map(r=>`<div class="line"><span>${r[0]}</span><b>${r[1]}</b></div>`).join('');
+  document.querySelectorAll('#seg button').forEach(b=>b.classList.toggle('on', b.dataset.d===String($('days').value)));
   const bad = (c1<=0||c2<=0||c4<=0||(hasCall&&c3<=0));
   $('hero').innerHTML = bad
     ? 'Укажите конверсии больше нуля'
-    : `Нужно вложить ${fmt(budget)} ₽, чтобы заработать ${fmt(goal)} ₽<small>За ${days} дн., ${fmt(touch)} касаний, ${accs} аккаунтов по ${fmt(accCost)} ₽</small>`;
+    : `Нужно вложить ${fmt(budget)} ₽, чтобы заработать ${fmt(goal)} ₽<small>За ${DAYS[days]||days+' дн.'}, ${fmt(touch)} касаний, ${accs} аккаунтов по ${fmt(accCost)} ₽</small>`;
 
   // bars (log-ish: relative to touches, min width)
   const max = Math.max(touch,1);
@@ -182,6 +193,8 @@ function calc(){
 
 ids.concat(['hasCall']).forEach(i=>$(i).addEventListener('input',()=>{save();calc();}));
 $('hasCall').addEventListener('change',()=>{save();calc();});
+if(!DAYS[$('days').value]) $('days').value = 30;
+document.querySelectorAll('#seg button').forEach(b=>b.addEventListener('click',()=>{ $('days').value=b.dataset.d; save(); calc(); }));
 calc();
 </script>
 </body>
