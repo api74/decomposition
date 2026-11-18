@@ -78,19 +78,15 @@
       <input class="inp" id="cr4" type="number" min="0" max="100" step="0.1" value="30">
 
       <div class="group">Затраты и сроки</div>
-      <div class="row2">
-        <div><label>Стоимость одного касания, ₽</label>
-        <input class="inp" id="cpt" type="number" min="0" step="0.1" value="20"></div>
-        <div><label>Постоянные расходы, ₽</label>
-        <input class="inp" id="fixed" type="number" min="0" value="0"></div>
-      </div>
+      <label>Стоимость одного аккаунта, ₽</label>
+      <input class="inp" id="acc" type="number" min="0" value="500">
       <div class="row2">
         <div><label>Срок кампании, дней</label>
         <input class="inp" id="days" type="number" min="1" value="14"></div>
         <div><label>Касаний в день с 1 аккаунта</label>
         <input class="inp" id="perAcc" type="number" min="1" value="30"></div>
       </div>
-      <div class="hint">Стартовые цифры примерные. Подставьте свои реальные конверсии из таблицы заявок.</div>
+      <div class="hint">Стартовые цифры примерные. Подставьте свои реальные конверсии из таблицы заявок. Расход считается только на аккаунты.</div>
     </div>
 
     <div>
@@ -113,7 +109,7 @@ const $ = id => document.getElementById(id);
 const fmt = n => isFinite(n) ? Math.round(n).toLocaleString('ru-RU') : '0';
 const fmt1 = n => isFinite(n) ? (Math.round(n*10)/10).toLocaleString('ru-RU') : '0';
 const num = id => Math.max(0, parseFloat($(id).value) || 0);
-const ids = ['goal','check','cr1','cr2','cr3','cr4','cpt','fixed','days','perAcc'];
+const ids = ['goal','check','cr1','cr2','cr3','cr4','acc','days','perAcc'];
 const stages = [
   {k:'touch', name:'Касаний AI-агента'},
   {k:'reply', name:'Ответили, диалог'},
@@ -145,7 +141,7 @@ function calc(){
 
   const goal=num('goal'), check=Math.max(1,num('check'));
   const c1=num('cr1')/100, c2=num('cr2')/100, c3=hasCall?num('cr3')/100:1, c4=num('cr4')/100;
-  const cpt=num('cpt'), fixed=num('fixed'), days=Math.max(1,num('days')), perAcc=Math.max(1,num('perAcc'));
+  const accCost=num('acc'), days=Math.max(1,num('days')), perAcc=Math.max(1,num('perAcc'));
 
   const sale = Math.ceil(goal/check);
   const call = c4>0 ? Math.ceil(sale/c4) : 0;
@@ -155,10 +151,9 @@ function calc(){
 
   const vals = {touch,reply,lead,call,sale};
   const active = stages.filter(s => hasCall || s.k!=='call');
-  const budget = touch*cpt + fixed;
   const perDay = Math.ceil(touch/days);
   const accs = Math.ceil(perDay/perAcc);
-  const realRev = sale*check;
+  const budget = accs*accCost;
 
   // plan lines
   const L = [];
@@ -169,12 +164,12 @@ function calc(){
   L.push(['Нужно касаний AI-агента', fmt(touch)+' шт.']);
   L.push(['Касаний в день', fmt(perDay)+' шт.']);
   L.push(['Аккаунтов в работе', accs+' шт.']);
-  L.push(['Бюджет кампании', fmt(budget)+' ₽']);
+  L.push(['Бюджет на аккаунты', fmt(budget)+' ₽']);
   $('lines').innerHTML = L.map(r=>`<div class="line"><span>${r[0]}</span><b>${r[1]}</b></div>`).join('');
   const bad = (c1<=0||c2<=0||c4<=0||(hasCall&&c3<=0));
   $('hero').innerHTML = bad
     ? 'Укажите конверсии больше нуля'
-    : `Нужно вложить ${fmt(budget)} ₽, чтобы заработать ${fmt(goal)} ₽<small>За ${days} дн., ${fmt(touch)} касаний, расчёт округлён вверх до целых сделок</small>`;
+    : `Нужно вложить ${fmt(budget)} ₽, чтобы заработать ${fmt(goal)} ₽<small>За ${days} дн., ${fmt(touch)} касаний, ${accs} аккаунтов по ${fmt(accCost)} ₽</small>`;
 
   // bars (log-ish: relative to touches, min width)
   const max = Math.max(touch,1);
